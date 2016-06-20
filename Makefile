@@ -1,13 +1,13 @@
 all: src
 
 src:
-	rebar get-deps compile xref
+	./rebar get-deps compile xref
 
 clean:
-	rebar clean
+	./rebar clean
 
 test: all
-	rebar -v skip_deps=true eunit
+	./rebar -v skip_deps=true eunit
 
 # We assume Elixir and Quviq Quickcheck are installed
 exunit:
