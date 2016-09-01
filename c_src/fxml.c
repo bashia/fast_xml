@@ -249,15 +249,15 @@ static int make_element(ErlNifEnv* env, struct buf *rbuf, ERL_NIF_TERM el)
 
   if (enif_get_tuple(env, el, &arity, &tuple)) {
     if (arity == 2) {
+        if (ENIF_COMPARE(tuple[0], atom_xmlcdata_section)) {
+      if (enif_inspect_iolist_as_binary(env, tuple[1], &cdata)) {
+        cdata_encode(env, rbuf, cdata.data, cdata.size);
+        ret = 1;
+      };
+        };
       if (!ENIF_COMPARE(tuple[0], atom_xmlcdata)) {
 	if (enif_inspect_iolist_as_binary(env, tuple[1], &cdata)) {
 	  xml_encode(env, rbuf, cdata.data, cdata.size);
-	  ret = 1;
-	};
-      };
-      if (ENIF_COMPARE(tuple[0], atom_xmlcdata_section)) {
-	if (enif_inspect_iolist_as_binary(env, tuple[1], &cdata)) {
-	  cdata_encode(env, rbuf, cdata.data, cdata.size);
 	  ret = 1;
 	};
       };
