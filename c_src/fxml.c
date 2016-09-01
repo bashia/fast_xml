@@ -37,6 +37,7 @@
 
 static ERL_NIF_TERM atom_xmlelement;
 static ERL_NIF_TERM atom_xmlcdata;
+static ERL_NIF_TERM atom_xmlcdata_section;
 
 struct buf {
   int limit;
@@ -177,8 +178,8 @@ static void cdata_encode(ErlNifEnv* env, struct buf *rbuf, unsigned char *data, 
         lookbehind[0] = lookbehind[1];
         lookbehind[1] = data[in_index];
 
-        if strcmp(lookbehind, cdata_closing_partial) == 0 {
-            if data[in_index] == '>' {
+        if (strcmp(lookbehind, cdata_closing_partial) == 0) {
+            if (data[in_index] == '>') {
                 buf_add_str(env, rbuf, cdata_closing, 3);
                 buf_add_str(env, rbuf, cdata_opening, 9);
             }
