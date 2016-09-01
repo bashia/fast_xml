@@ -50,6 +50,7 @@ static int load(ErlNifEnv* env, void** priv, ERL_NIF_TERM load_info)
 {
   atom_xmlelement = enif_make_atom(env, "xmlel");
   atom_xmlcdata = enif_make_atom(env, "xmlcdata");
+  atom_xmlcdata_section = enif_make_atom(env, "xmlcdata_section");
   return 0;
 }
 
@@ -75,7 +76,7 @@ static void destroy_buf(ErlNifEnv* env, struct buf *rbuf)
 static void resize_buf(ErlNifEnv* env, struct buf *rbuf, int len_to_add)
 {
   int new_len = rbuf->len + len_to_add;
-  
+
   if (new_len > rbuf->limit) {
      while (new_len > rbuf->limit)
 	rbuf->limit *= 2;
@@ -159,6 +160,34 @@ static void attr_encode(ErlNifEnv* env, struct buf *rbuf, unsigned char *data, i
   };
 }
 
+static void cdata_encode(ErlNifEnv* env, struct buf *rbuf, unsigned char *data, int len)
+{
+    char *cdata_opening = "<![CDATA[";
+    char *cdata_closing = "]]>";
+    char *cdata_closing_partial = "]]";
+
+
+    int in_index = 0;
+    char lookbehind[2] = "\0\0";
+
+    buf_add_str(env, rbuf, cdata_opening, 9);
+
+    for (;in_index < len;) {
+
+        lookbehind[0] = lookbehind[1];
+        lookbehind[1] = data[in_index];
+
+        if strcmp(lookbehind, cdata_closing_partial) == 0 {
+            if data[in_index] == '>' {
+                buf_add_str(env, rbuf, cdata_closing, 3);
+                buf_add_str(env, rbuf, cdata_opening, 9);
+            }
+        }
+        buf_add_char(env, rbuf, data[in_index]);
+    }
+    buf_add_str(env, rbuf, cdata_closing, 3);
+}
+
 static int make_elements(ErlNifEnv* env, struct buf *rbuf, ERL_NIF_TERM els)
 {
   ERL_NIF_TERM head, tail;
@@ -182,7 +211,7 @@ static int make_attrs(ErlNifEnv* env, struct buf *rbuf, ERL_NIF_TERM attrs)
   ERL_NIF_TERM head, tail;
   const ERL_NIF_TERM *tuple;
   int arity, ret = 1;
-  
+
   while (enif_get_list_cell(env, attrs, &head, &tail)) {
     if (enif_get_tuple(env, head, &arity, &tuple)) {
       if (arity == 2) {
@@ -207,7 +236,7 @@ static int make_attrs(ErlNifEnv* env, struct buf *rbuf, ERL_NIF_TERM attrs)
       break;
     };
   };
-  
+
   return ret;
 }
 
@@ -222,6 +251,12 @@ static int make_element(ErlNifEnv* env, struct buf *rbuf, ERL_NIF_TERM el)
       if (!ENIF_COMPARE(tuple[0], atom_xmlcdata)) {
 	if (enif_inspect_iolist_as_binary(env, tuple[1], &cdata)) {
 	  xml_encode(env, rbuf, cdata.data, cdata.size);
+	  ret = 1;
+	};
+      };
+      if (ENIF_COMPARE(tuple[0], atom_xmlcdata_section)) {
+	if (enif_inspect_iolist_as_binary(env, tuple[1], &cdata)) {
+	  cdata_encode(env, rbuf, cdata.data, cdata.size);
 	  ret = 1;
 	};
       };
@@ -249,7 +284,7 @@ static int make_element(ErlNifEnv* env, struct buf *rbuf, ERL_NIF_TERM el)
       };
     };
   };
-  
+
   return ret;
 }
 
@@ -280,7 +315,7 @@ static ERL_NIF_TERM element_to(ErlNifEnv* env, int argc,
     };
     destroy_buf(env, rbuf);
   };
-  
+
   return enif_make_badarg(env);
 }
 
